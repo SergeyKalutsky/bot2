@@ -3,6 +3,9 @@ from api_token import TOKEN
 import discord
 import requests
 import wikipedia
+from api import vicorina
+
+wikipedia.set_lang("ru")
 
 
 def search_wiki(search):
@@ -25,9 +28,30 @@ def get_fox():
 client = discord.Client(intents=discord.Intents.all())
 
 
+state = ''
+answer = ''
+help_ans = ''
+
+
 @client.event
 async def on_message(message):
+    global state, answer, help_ans
     if message.author == client.user:
+        return
+    if state == 'game':
+        if message.content == answer:
+            await message.channel.send('Правильно')
+            question, answer = vicorina()
+            help_ans = ''
+            await message.channel.send(question)
+        else:
+            help_ans = answer[:len(help_ans) + 1]
+            await message.channel.send(f'{help_ans}')
+        return 
+    if message.content == '!game':
+        question, answer = vicorina()
+        state = 'game'
+        await message.channel.send(question)
         return
     if 'wiki' in message.content:
         search = ' '.join(message.content.split(' ')[1:])
