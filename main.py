@@ -1,78 +1,68 @@
-from random import randint
 from api_token import TOKEN
 import discord
-import requests
-import wikipedia
-from api import vicorina
-from chat_gpt_api import talk_to_chatGPT_who_are_cheap
-
-wikipedia.set_lang("ru")
-
-
-def search_wiki(search):
-    lst = wikipedia.search(search)
-    if lst:
-        res = wikipedia.page(lst[0])
-        return res.title, res.url
-
-
-def get_duck_url():
-    res = requests.get('https://random-d.uk/api/random').json()
-    return res['url']
-
-
-def get_fox():
-    res = requests.get('https://randomfox.ca/floof/').json()
-    return res['link']
-
+from resources import get_data, gen_resources
 
 client = discord.Client(intents=discord.Intents.all())
 
+# 1000 серебрянных
+# Информация обновляется раз в сутки
+# руда, кожа, специи, металлы, пшеница -> случайным образом определяем кол-во и цену
+# Города: Линхейм, куртавия, трайтгельм, алгоритмтоун
+# Переезд в другой город стоит денег и времени
+# !towns
+# !info Линхейм
+# !buy resource
 
-state = ''
-answer = ''
-help_ans = ''
 
+money = 1000
 
 @client.event
 async def on_message(message):
-    global state, answer, help_ans
+    global money
     if message.author == client.user:
         return
-    await message.channel.send('Генерирую ответ...')
-    chat_response = talk_to_chatGPT_who_are_cheap(message.content)
-    await message.channel.send(chat_response)
-    # if state == 'game':
-    #     if message.content == answer:
-    #         await message.channel.send('Правильно')
-    #         question, answer = vicorina()
-    #         help_ans = ''
-    #         await message.channel.send(question)
-    #     else:
-    #         help_ans = answer[:len(help_ans) + 1]
-    #         await message.channel.send(f'{help_ans}')
-    #     return 
-    # if message.content == '!game':
-    #     question, answer = vicorina()
-    #     state = 'game'
-    #     await message.channel.send(question)
-    #     return
-    # if 'wiki' in message.content:
-    #     search = ' '.join(message.content.split(' ')[1:])
-    #     res = search_wiki(search)
-    #     if res:
-    #         await message.channel.send(f'{res[0]}]\n{res[1]}')
-    # if message.content == '!duck':
-    #     url = get_duck_url()
-    #     await message.channel.send(url)
-    # if message.content == '!fox':
-    #     url = get_fox()
-    #     await message.channel.send(url)
-    # if message.content == 'как дела?':
-    #     await message.channel.send('Хорошо как у тебя?')
-    # if message.content == 'с новым годом!':
-    #     await message.channel.send('И тебя с праздником')
-    # if message.content == 'random':
-    #     await message.channel.send(str(randint(1, 100)))
+    if message.content == '!help':
+        commands = '''Команды:
+**!towns** - показывает ближайшие города
+**!info город** - показывает информацию по ресурсам в городе'''
+        await message.channel.send(commands)
+    if message.content == '!towns':
+        data = get_data()
+        towns = ''
+        for town_dict in data:
+            towns += town_dict['town'] + '\n'
+        await message.channel.send(towns)
+    if '!money' in message.content:
+        await message.channel.send(money)
+    if '!info' in message.content:
+        town = message.content.split(' ')[1]
+        data = get_data()
+        found = False
+        for city_dict in data:
+            if city_dict['town'] == town:
+                found = True
+                break
+        if not found:
+            await message.channel.send('Такого города не существует!')
+            return
+        resource_string = ''
+        for resource in city_dict['resources']:
+            resource_string += f'**{resource["name"]}**, ЦЕНА: **{resource["price"]}**, КОЛ-ВО: **{resource["amount"]}**\n\n'
+        await message.channel.send(resource_string)
+    if '!buy' in message.content:
+        data = get_data()
+        resource_user = message.content.split(' ')[1]
+        amount = int(message.content.split(' ')[2])
+        for city_dict in data:
+            if city_dict['is_here']:
+                break
+        for resource in city_dict['resources']:
+            if resource_user == resource['name']:
+                total = resource['price'] * amount
+                money -= total
+                await message.channel.send('Покупка совершена')
+                break
+
+
         
 client.run(TOKEN)
