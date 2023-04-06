@@ -1,7 +1,5 @@
 import requests
 
-token = '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'
-
 
 def talk_to_chatGPT_who_are_cheap(message):
     url = 'https://api.openai.com/v1/chat/completions'
